@@ -138,6 +138,32 @@ export class Network extends CosmWasmClient {
     this.gasPrice = options.gasPrice;
     this.registry = createDefaultRegistry();
   }
+  
+  /**
+  * Makes a smart query on the contract, returns the parsed JSON document.
+  *
+  * Promise is rejected when contract does not exist.
+  * Promise is rejected for invalid query format.
+  * Promise is rejected for invalid response format.
+  */
+  async queryContractSmart(address, queryMsg) {
+    try {
+      return await this.forceGetQueryClient().wasm.queryContractSmart(address, queryMsg);
+    }
+    catch (error) {
+      if (error instanceof Error) {
+        if (error.message.startsWith("not found: contract")) {
+          throw new Error(`No contract found at address "${address}"`);
+        }
+        else {
+          throw error;
+        }
+      }
+      else {
+        throw error;
+      }
+    }
+  }
 
   public async simulate(
     signerAddress: string,

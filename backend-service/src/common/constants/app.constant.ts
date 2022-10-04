@@ -35,6 +35,7 @@ export enum AppConstants {
   ALREADY_SOLD = 'already sold',
   MAX_TOKENS_PER_BATCH_MINT = 20,
   LENGTH_IN_BYTES = 32,
+  GET_MINTER_CONFIG_BASE64 = 'eyJnZXRfY29uZmlnIjp7fX0=',
 }
 
 export enum TX_CODE {

@@ -125,16 +125,20 @@ export class NFTService implements INFTService {
   * @param request
   * @returns
   */
-  async transfer(request: MODULE_REQUEST.TransferNftRequest) : Promise<ResponseDto> {
+  async transfer(request: MODULE_REQUEST.TransferNftRequest): Promise<ResponseDto> {
     try {
       const { nftId, operatorAddress, contractAddress, recipient } = request;
       this._logger.log(`Transfer Info: Contract: ${contractAddress}, ID: ${nftId}`);
 
       let account = await this.prepareExecute(operatorAddress);
+      // const queryMsg = AppConstants.GET_MINTER_CONFIG_BASE64;
+      const queryMsg = { get_config: {} };
+      const queryResult = await this.network.queryContractSmart(contractAddress, queryMsg);
+      const nft_contract_addess = queryResult.cw721_address;
       const transferMsg = {
         transfer_nft: {
           recipient,
-          token_id: nftId,
+          token_id: nftId.toString(),
         }
       };
       const fee = AppConstants.AUTO;
@@ -142,7 +146,7 @@ export class NFTService implements INFTService {
       const result = await this.network.execute(
         account.address,
         // recipient,
-        contractAddress,
+        nft_contract_addess,
         transferMsg,
         fee,
       );
