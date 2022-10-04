@@ -1,0 +1,26 @@
+{
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "apps/backend-service/src",
+  "monorepo": true,
+  "root": "apps/backend-service",
+  "project": {
+    "backend-service": {
+      "type": "application",
+      "root": "apps/backend-service",
+      "entryFile": "main",
+      "sourceRoot": "apps/backend-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/backend-service/tsconfig.app.json"
+      }
+    },
+    "kms-api": {
+      "type": "application",
+      "root": "apps/kms-api",
+      "entryFile": "main",
+      "sourceRoot": "apps/kms-api/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/kms-api/tsconfig.app.json"
+      }
+    }
+  }
+}

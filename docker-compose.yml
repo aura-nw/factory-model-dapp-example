@@ -1,0 +1,86 @@
+version: "3.9"
+
+services:
+  backend-service:
+    build:
+      context: .
+      dockerfile: apps/backend-service/Dockerfile
+    image: ghcr.io/aura-nw/artaverse-backend-api:${GITHUB_REF_NAME}_${COMMIT_TAG} 
+    restart: always
+    ports:
+      - 3000:3000
+    volumes:
+      - ./apps/backend-service:/backend-service
+      - /backend-service/node_modules
+
+  kms-api:
+    build:
+      context: .
+      dockerfile: apps/kms-api/Dockerfile
+    image: ghcr.io/aura-nw/kms-api:${GITHUB_REF_NAME}_${COMMIT_TAG}
+    restart: always
+    ports:
+      - 4000:4000
+    volumes:
+      - ./apps/kms-api:/kms-api
+      - /kms-api/node_modules
+
+  mint-job:
+    build:
+      context: .
+      dockerfile: apps/mint-job/Dockerfile
+    image: ghcr.io/aura-nw/artaverse-mint-job:${GITHUB_REF_NAME}_${COMMIT_TAG}
+    restart: always
+    ports:
+      - 5000:5000
+    volumes:
+      - ./apps/kmint-job:/mint-job
+      - /mint-job/node_modules
+
+  random-pack:
+    build:
+      context: .
+      dockerfile: apps/random-pack/Dockerfile
+    image: ghcr.io/aura-nw/artaverse-random-pack:${GITHUB_REF_NAME}_${COMMIT_TAG}
+    restart: always
+    ports:
+      - 6000:6000
+    volumes:
+      - ./apps/random-pack:/random-pack
+      - /random-pack/node_modules
+
+  sync-data:
+    build:
+      context: .
+      dockerfile: apps/sync-data/Dockerfile
+    image: ghcr.io/aura-nw/artaverse-sync:${GITHUB_REF_NAME}_${COMMIT_TAG}
+    restart: always
+    ports:
+      - 7000:7000
+    volumes:
+      - ./apps/sync-data:/sync-data
+      - /sync-data/node_modules
+
+  websocket:
+    build:
+      context: .
+      dockerfile: apps/websocket/Dockerfile
+    image: ghcr.io/aura-nw/artaverse-websocket:${GITHUB_REF_NAME}_${COMMIT_TAG}
+    restart: always
+    ports:
+      - 8000:8000
+    volumes:
+      - ./apps/websocket:/websocket
+      - /websocket/node_modules
+
+  time-job:
+    build:
+      context: .
+      dockerfile: apps/time-job/Dockerfile
+    image: ghcr.io/aura-nw/artaverse-time-job:${GITHUB_REF_NAME}_${COMMIT_TAG}
+    restart: always
+    ports:
+      - 9000:9000
+    volumes:
+      - ./apps/time-job:/time-job
+      - /time-job/node_modules
