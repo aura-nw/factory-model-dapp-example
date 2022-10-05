@@ -2,17 +2,28 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class InstantiateContractRequest {
   @ApiProperty()
-  operatorAddress: string;
+  codeId: number;
 
   @ApiProperty()
-  tokenUri: string;
+  initMsg: string;
 
   @ApiProperty()
-  numToken: number;
+  label: string;
 
-  @ApiProperty()
-  name: string;
-
-  @ApiProperty()
-  symbol: string;
 }
+// export class InstantiateContractRequest {
+//   @ApiProperty()
+//   operatorAddress: string;
+
+//   @ApiProperty()
+//   tokenUri: string;
+
+//   @ApiProperty()
+//   numToken: number;
+
+//   @ApiProperty()
+//   name: string;
+
+//   @ApiProperty()
+//   symbol: string;
+// }
