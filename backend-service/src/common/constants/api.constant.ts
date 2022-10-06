@@ -15,5 +15,5 @@ export const URL_CONSTANTS = {
   TRANSFER_NFT: 'transfer_nft',
   CONNECT_KMS: ':id/connect',
   SIGN_BY_KMS: ':id/sign',
-  SIGN_MSG: 'sign_msg'
+  MINT_BFT_BY_MNEMONIC: 'mint_nft_by_mnemonic'
 };

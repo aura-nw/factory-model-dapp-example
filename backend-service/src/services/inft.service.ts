@@ -23,5 +23,5 @@ export interface INFTService {
    * sign msg
    * @param request
    */
-  signByMnemonic();
+   mintByMnemonic(request: MODULE_REQUEST.MintNftByMnemonicRequest);
 }

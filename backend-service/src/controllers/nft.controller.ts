@@ -79,15 +79,15 @@ export class NftController {
     return this.nftService.transfer(request);
   }
 
-  @Post(URL_CONSTANTS.SIGN_MSG)
+  @Post(URL_CONSTANTS.MINT_BFT_BY_MNEMONIC)
   @ApiOperation({
-    summary: 'Sign msg',
+    summary: 'Mint NFT by mnemonic',
   })
   @ApiBadRequestResponse({ description: 'Error: Bad Request', schema: {} })
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  async signMsg() {
-    this._logger.log('========== Sign msg ==========');
-    return this.nftService.signByMnemonic();
+  async mintNftByMnemonic(@Body() request: MODULE_REQUEST.MintNftByMnemonicRequest) {
+    this._logger.log('========== Mint nft by mnemonic ==========');
+    return this.nftService.mintByMnemonic(request);
   }
 }

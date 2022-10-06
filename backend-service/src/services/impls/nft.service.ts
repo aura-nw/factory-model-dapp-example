@@ -1,4 +1,4 @@
-import { DirectSecp256k1HdWallet } from '@cosmjs/proto-signing';
+import { DirectSecp256k1HdWallet, EncodeObject } from '@cosmjs/proto-signing';
 import { Injectable, Logger } from '@nestjs/common';
 import { calculateFee, GasPrice, logs } from '@cosmjs/stargate';
 import { INFTService } from '../inft.service';
@@ -11,7 +11,10 @@ import { ErrorMap } from '../../common/error.map';
 import { MODULE_REQUEST } from '../../module.config';
 import { ResponseDto } from '../../dtos/responses';
 import { Account } from '../../utils/interface.utils';
-import { SigningCosmWasmClient } from 'cosmwasm';
+import { InstantiateOptions, SigningCosmWasmClient, toUtf8 } from 'cosmwasm';
+import {
+  MsgExecuteContract,
+} from 'cosmjs-types/cosmwasm/wasm/v1/tx';
 
 @Injectable()
 export class NFTService implements INFTService {
@@ -19,7 +22,6 @@ export class NFTService implements INFTService {
   private _configService = new ConfigService();
   private _coinDenom = this._configService.get('COIN_DENOM');
   private rpcEndpoint = this._configService.get('NETWORK_TENDERMINT_URL');
-  private contractAddress = this._configService.get('CONTRACT_ADDRESS');
   private mnemonic = this._configService.get('MNEMONIC');
   maxTokensPerBatchMint = this._configService.get('MAX_TOKENS_PER_BATCH_MINT')
     ? Number(this._configService.get('MAX_TOKENS_PER_BATCH_MINT'))
@@ -41,7 +43,7 @@ export class NFTService implements INFTService {
    * @returns
    */
 
-  async signByMnemonic(): Promise<ResponseDto> {
+  async mintByMnemonic(request: MODULE_REQUEST.MintNftByMnemonicRequest): Promise<ResponseDto> {
     try {
       // Wallet
       const prefix = 'aura';
@@ -61,31 +63,29 @@ export class NFTService implements INFTService {
         { gasPrice: gasPrice },
       );
 
-      // const { gasInfo } = await client.simulate(address, new execMsg, mnemonic);
-      // const executeFee = calculateFee(300_000, gasPrice);
+      const stringifyMsg = JSON.stringify(request.msg);
 
-      const execMsg = {
-        create_minter: {
-          minter_instantiate_msg: {
-            base_token_uri:
-              'ipfs://QmcD69ru6m3PsYWF93cWfq19JS5mg5cnsMGTuqLKDKLpch',
-            name: 'rose',
-            symbol: 'ahihi',
-            num_tokens: 10,
-            max_tokens_per_batch_mint: 10,
-            max_tokens_per_batch_transfer: 1,
-            royalty_percentage: 10,
-            royalty_payment_address: 'xxx',
-          },
-        },
+      //Estimage fee and gas
+      const options: InstantiateOptions = {};
+
+      const executeContractMsg: EncodeObject = {
+        typeUrl: '/cosmwasm.wasm.v1.MsgExecuteContract',
+        value: MsgExecuteContract.fromPartial({
+          sender: address,
+          contract: request.contractAddress,
+          msg: toUtf8(stringifyMsg),
+          funds: [...(options.funds || [])],
+        }),
       };
 
-      const executeFee = calculateFee(800000, gasPrice);
+      //Read Cosmos docs, default fee would be multiple with 1.3
+      const estimateGas = await client.simulate(address, [executeContractMsg], this.mnemonic);
+      const executeFee = calculateFee(Math.round(estimateGas * 1.3), gasPrice);
 
       const result = await client.execute(
         address,
-        this.contractAddress,
-        execMsg,
+        request.contractAddress,
+        JSON.parse(stringifyMsg),
         executeFee,
         this.mnemonic,
       );
