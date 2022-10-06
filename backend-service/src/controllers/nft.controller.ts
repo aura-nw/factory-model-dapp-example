@@ -20,7 +20,7 @@ import {
 } from '@nestjs/swagger';
 // import { ROLE_ENUM } from 'artaverse-submodule/common/constants/app-constants';
 import { CONTROLLER_CONSTANTS, URL_CONSTANTS } from '../common/constants/api.constant';
-import { GroupsGuard } from '../guards/groups.guard';
+// import { GroupsGuard } from '../guards/groups.guard';
 import { MODULE_REQUEST, SERVICE_INTERFACE } from '../module.config';
 import { INFTService } from '../services/inft.service';
 

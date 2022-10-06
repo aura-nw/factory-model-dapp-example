@@ -45,6 +45,11 @@ export class NFTService implements INFTService {
 
   async mintByMnemonic(request: MODULE_REQUEST.MintNftByMnemonicRequest): Promise<ResponseDto> {
     try {
+      const { nftIds, contractAddress } = request;
+      this._logger.log(
+        `Mint Info: Contract: ${contractAddress}, ID: ${nftIds}`,
+      );
+
       // Wallet
       const prefix = 'aura';
       const wallet = await DirectSecp256k1HdWallet.fromMnemonic(this.mnemonic, {
@@ -54,7 +59,11 @@ export class NFTService implements INFTService {
       const address = account.address;
 
       // Network config
-      const gasPrice = GasPrice.fromString('0.0002utaura');
+      const gasPrice = GasPrice.fromString('0.02ueaura');
+
+      const mintBatchMsg = {
+        batch_mint: { token_ids: nftIds },
+      };
 
       // Setup client
       const client = await SigningCosmWasmClient.connectWithSigner(
@@ -63,7 +72,7 @@ export class NFTService implements INFTService {
         { gasPrice: gasPrice },
       );
 
-      const stringifyMsg = JSON.stringify(request.msg);
+      const stringifyMsg = JSON.stringify(mintBatchMsg);
 
       //Estimage fee and gas
       const options: InstantiateOptions = {};
