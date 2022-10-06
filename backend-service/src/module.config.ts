@@ -8,6 +8,7 @@ import {
 } from './dtos/request/nft';
 import { Simuate } from "./dtos/request/kms/simulate.request";
 import { ResponseDto } from './dtos/responses';
+import { SignMsgRequest } from "./dtos/request/sign/sign.request.dto";
 
 export const ENTITIES_CONFIG = {
  
@@ -20,7 +21,7 @@ export const REQUEST_CONFIG = {
   CONNECT_KMS_PARAM: ConnectKMSParam,
   SIGN_KMS_PARAM: SignKMSParam,
   SIGN_KMS_REQUEST: SignKMSRequest,
-
+  SIGN_MSG_REQUEST: SignMsgRequest,
 };
 
 export const REQUEST_PARAM = {
@@ -40,6 +41,7 @@ export namespace MODULE_REQUEST {
   export abstract class ConnectKMSParam extends REQUEST_CONFIG.CONNECT_KMS_PARAM { }
   export abstract class SignKMSParam extends REQUEST_CONFIG.SIGN_KMS_PARAM { }
   export abstract class SignKMSRequest extends REQUEST_CONFIG.SIGN_KMS_REQUEST { }
+  export abstract class SignMsgRequest extends REQUEST_CONFIG.SIGN_MSG_REQUEST { }
 }
 
 export namespace MODULE_PARAM {

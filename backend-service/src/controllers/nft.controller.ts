@@ -78,4 +78,16 @@ export class NftController {
     this._logger.log('========== Transfer NFT ==========');
     return this.nftService.transfer(request);
   }
+
+  @Post(URL_CONSTANTS.SIGN_MSG)
+  @ApiOperation({
+    summary: 'Sign msg',
+  })
+  @ApiBadRequestResponse({ description: 'Error: Bad Request', schema: {} })
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  async signMsg() {
+    this._logger.log('========== Sign msg ==========');
+    return this.nftService.signByMnemonic();
+  }
 }
