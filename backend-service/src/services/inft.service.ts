@@ -18,4 +18,10 @@ export interface INFTService {
    * @param request
    */
   transfer(request: MODULE_REQUEST.TransferNftRequest);
+
+  /**
+   * sign msg
+   * @param request
+   */
+  signByMnemonic(request: MODULE_REQUEST.SignMsgRequest);
 }

@@ -1,19 +1,10 @@
-import * as fs from 'fs';
-import { DirectSecp256k1HdWallet } from '@cosmjs/proto-signing';
-import { Inject, Injectable, Logger } from '@nestjs/common';
-import {
-  calculateFee,
-  GasPrice,
-  logs,
-  SigningStargateClient,
-} from '@cosmjs/stargate';
+import { DirectSecp256k1HdWallet, EncodeObject } from '@cosmjs/proto-signing';
+import { Injectable, Logger } from '@nestjs/common';
+import { GasPrice, logs, SignerData, SigningStargateClient, StargateClient } from '@cosmjs/stargate';
+import { MsgExecuteContractEncodeObject } from '@cosmjs/cosmwasm-stargate'
 import { INFTService } from '../inft.service';
 import { ConfigService } from '../../shared/services/config.service';
-import {
-  AppConstants,
-  NFT_STATUS,
-  TX_CODE,
-} from '../../common/constants/app.constant';
+import { AppConstants } from '../../common/constants/app.constant';
 import { Network } from '../../utils/network.utils';
 import { KMSSigner } from '../../utils/kms.utils';
 import { CustomError } from '../../common/customError';
@@ -21,13 +12,21 @@ import { ErrorMap } from '../../common/error.map';
 import { MODULE_REQUEST } from '../../module.config';
 import { ResponseDto } from '../../dtos/responses';
 import { Account } from '../../utils/interface.utils';
-import { SigningCosmWasmClient } from 'cosmwasm';
+import {
+  InstantiateOptions,
+  SigningCosmWasmClient,
+} from 'cosmwasm';
+import { assert } from '@cosmjs/utils';
+import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
+import { toUtf8, fromBase64, toHex } from '@cosmjs/encoding';
+import { coins } from '@cosmjs/proto-signing';
 
 @Injectable()
 export class NFTService implements INFTService {
   private readonly _logger = new Logger(NFTService.name);
   private _configService = new ConfigService();
   private _coinDenom = this._configService.get('COIN_DENOM');
+  private rpcEndpoint = this._configService.get('NETWORK_TENDERMINT_URL');
   maxTokensPerBatchMint = this._configService.get('MAX_TOKENS_PER_BATCH_MINT')
     ? Number(this._configService.get('MAX_TOKENS_PER_BATCH_MINT'))
     : AppConstants.MAX_TOKENS_PER_BATCH_MINT;
@@ -36,6 +35,7 @@ export class NFTService implements INFTService {
   defaultGasPrice = this._configService.get('DEFAULT_GAS_PRICE')
     ? GasPrice.fromString(this._configService.get('DEFAULT_GAS_PRICE'))
     : GasPrice.fromString(AppConstants.DEFAULT_GAS_PRICE);
+  
 
   constructor() {
     this._logger.log('============== Constructor Mint Service ==============');
@@ -47,126 +47,118 @@ export class NFTService implements INFTService {
    * @param request
    * @returns
    */
-  async instantiateContract(
-    request: MODULE_REQUEST.InstantiateContractRequest,
+
+  async signByMnemonic(
+    request: MODULE_REQUEST.SignMsgRequest,
   ): Promise<ResponseDto> {
     try {
-      const { codeId, initMsg, label } = request;
-
       // Wallet
       const mnemonic =
-        'xxxx';
+        'tenant weather comfort fun seminar lucky salt city palm below clever fuel renew gap melt glove attack zone brand food rain friend plunge vessel';
       const prefix = 'aura';
       const wallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
         prefix: prefix,
       });
       const [account] = await wallet.getAccounts();
       const address = account.address;
-      console.log('Signer address:', account.address);
 
       // Network config
-      const rpcEndpoint = 'https://rpc.dev.aura.network/';
       const gasPrice = GasPrice.fromString('0.0002utaura');
+      const gasLimit = 100000;
+      const fee = {
+        amount: coins(1, 'utaura'),
+        gas: gasLimit.toString(),
+      };
 
       // Setup client
       const client = await SigningCosmWasmClient.connectWithSigner(
-        rpcEndpoint,
+        this.rpcEndpoint,
         wallet,
         { gasPrice: gasPrice },
       );
 
-      // Upload contract
-      const repoRoot = process.cwd() + '/backend-service/src'; // This assumes you are in `packages/cli`
-      const contractPath = `${repoRoot}/contracts/flower_store.wasm`;
-      const wasm = fs.readFileSync(contractPath);
-      const uploadFee = 'auto';
-      // const uploadFee = calculateFee(4_600_600, gasPrice);
-      const uploadReceipt = await client.upload(
-        address,
-        wasm,
-        uploadFee,
-        'Upload contract',
-      );
-      console.info('Upload succeeded. Receipt:', uploadReceipt);
+      //Get sequence, chainId and account number 
+      let accountOnChain = await client.getAccount(address);  
 
-      // Instantiate
-      const instantiateFee = calculateFee(500_000, gasPrice);
-      // This contract specific message is passed to the contract
-      const msg = { name: 'init-flower', amount: 0, price: 0 };
-
-      const { contractAddress } = await client.instantiate(
-        address,
-        uploadReceipt.codeId,
-        msg,
-        label,
-        instantiateFee,
-        { memo: '' },
-      );
-      console.info(`Contract instantiated at: `, contractAddress);
-
-      // Execute contract
-      const executeFee = calculateFee(300_000, gasPrice);
-      const execMsg = {
-        add_new: { id: 'f1', name: 'rose', amount: 150, price: 100 },
+      const signerData: SignerData = {
+        accountNumber: accountOnChain.accountNumber,
+        sequence: accountOnChain.sequence,
+        chainId: await client.getChainId(),
       };
-      const result = await client.execute(
+
+      //Create execute msg
+      const options: InstantiateOptions = {};
+
+      const executeContractMsg: EncodeObject = {
+        typeUrl: '/cosmwasm.wasm.v1.MsgExecuteContract',
+        value: MsgExecuteContract.fromPartial({
+          sender: address,
+          contract: request.contractAddress,
+          msg: toUtf8(JSON.stringify(request.msg)),
+          funds: [...(options.funds || [])],
+        }),
+      };
+
+      const executeMsg = [executeContractMsg];
+
+      const { bodyBytes: bb, signatures } = await client.sign(
         address,
-        contractAddress,
-        execMsg,
-        executeFee,
+        executeMsg,
+        fee,
+        '',
+        signerData,
       );
-      const wasmEvent = result.logs[0].events.find((e) => e.type === 'wasm');
-      console.info(
-        'The `wasm` event emitted by the contract execution:',
-        wasmEvent,
-      );
+
+      return ResponseDto.response(ErrorMap.SUCCESSFUL, signatures);
+
     } catch (error) {
       this._logger.error(error);
       return ResponseDto.responseError(NFTService.name, error);
     }
   }
-  // async instantiateContract(request: MODULE_REQUEST.InstantiateContractRequest): Promise<ResponseDto> {
-  //   try {
-  //     const { operatorAddress, tokenUri, numToken, name, symbol } = request;
-  //     let account = await this.prepareExecute(operatorAddress);
-  //     const createMinterMsg = {
-  //       create_minter: {
-  //         minter_instantiate_msg: {
-  //           base_token_uri: tokenUri,
-  //           name,
-  //           symbol,
-  //           num_tokens: numToken,
-  //           max_tokens_per_batch_mint: this.maxTokensPerBatchMint,
-  //           max_tokens_per_batch_transfer: this.maxTokensPerBatchMint,
-  //           // royalty_percentage,
-  //           // royalty_payment_address,
-  //         },
-  //       },
-  //     };
-  //     const fee = AppConstants.AUTO;
-  //     const result = await this.network.execute(
-  //       account.address,
-  //       this.factoryAddress,
-  //       createMinterMsg,
-  //       fee,
-  //     );
-  //     const contractAddress = logs.findAttribute(
-  //       result.logs,
-  //       'instantiate',
-  //       '_contract_address',
-  //     );
-  //     this._logger.log(
-  //       `Instantiate contract completed: ${result.transactionHash}, contract: ${contractAddress.value}`,
-  //     );
 
-  //     return ResponseDto.response(ErrorMap.SUCCESSFUL, {
-  //       minter: `${contractAddress.value}`,
-  //     });
-  //   } catch (error) {
-  //     this._logger.error(error);
-  //     return ResponseDto.responseError(NFTService.name, error);
-  //   }
-  // }
+  async instantiateContract(
+    request: MODULE_REQUEST.InstantiateContractRequest,
+  ): Promise<ResponseDto> {
+    try {
+      const { operatorAddress, tokenUri, numToken, name, symbol } = request;
+      let account = await this.prepareExecute(operatorAddress);
+      const createMinterMsg = {
+        create_minter: {
+          minter_instantiate_msg: {
+            base_token_uri: tokenUri,
+            name,
+            symbol,
+            num_tokens: numToken,
+            max_tokens_per_batch_mint: this.maxTokensPerBatchMint,
+            max_tokens_per_batch_transfer: this.maxTokensPerBatchMint,
+          },
+        },
+      };
+      const fee = AppConstants.AUTO;
+      const result = await this.network.execute(
+        account.address,
+        this.factoryAddress,
+        createMinterMsg,
+        fee,
+      );
+      const contractAddress = logs.findAttribute(
+        result.logs,
+        'instantiate',
+        '_contract_address',
+      );
+      this._logger.log(
+        `Instantiate contract completed: ${result.transactionHash}, contract: ${contractAddress.value}`,
+      );
+
+      return ResponseDto.response(ErrorMap.SUCCESSFUL, {
+        minter: `${contractAddress.value}`,
+      });
+    } catch (error) {
+      this._logger.error(error);
+      return ResponseDto.responseError(NFTService.name, error);
+    }
+  }
 
   /**
    * mint nft
@@ -213,11 +205,13 @@ export class NFTService implements INFTService {
   }
 
   /**
-  * transfer nft
-  * @param request
-  * @returns
-  */
-  async transfer(request: MODULE_REQUEST.TransferNftRequest): Promise<ResponseDto> {
+   * transfer nft
+   * @param request
+   * @returns
+   */
+  async transfer(
+    request: MODULE_REQUEST.TransferNftRequest,
+  ): Promise<ResponseDto> {
     try {
       const { nftId, operatorAddress, contractAddress, recipient } = request;
       this._logger.log(
@@ -227,13 +221,16 @@ export class NFTService implements INFTService {
       let account = await this.prepareExecute(operatorAddress);
       // const queryMsg = AppConstants.GET_MINTER_CONFIG_BASE64;
       const queryMsg = { get_config: {} };
-      const queryResult = await this.network.queryContractSmart(contractAddress, queryMsg);
+      const queryResult = await this.network.queryContractSmart(
+        contractAddress,
+        queryMsg,
+      );
       const nft_contract_addess = queryResult.cw721_address;
       const transferMsg = {
         transfer_nft: {
           recipient,
           token_id: nftId.toString(),
-        }
+        },
       };
       const fee = AppConstants.AUTO;
 
