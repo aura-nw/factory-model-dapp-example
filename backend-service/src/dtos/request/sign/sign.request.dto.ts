@@ -1,8 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty } from 'class-validator';
 
-export class SignMsgRequest {
+export class MintNftByMnemonicRequest {
   @ApiProperty()
   @IsNotEmpty()
   contractAddress: string;
+
+  @ApiProperty()
+  @IsNotEmpty()
+  msg: JSON;
 }
