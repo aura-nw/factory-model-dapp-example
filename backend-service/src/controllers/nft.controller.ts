@@ -86,8 +86,8 @@ export class NftController {
   @ApiBadRequestResponse({ description: 'Error: Bad Request', schema: {} })
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  async signMsg(@Body() request: MODULE_REQUEST.SignMsgRequest) {
+  async signMsg() {
     this._logger.log('========== Sign msg ==========');
-    return this.nftService.signByMnemonic(request);
+    return this.nftService.signByMnemonic();
   }
 }

@@ -5,8 +5,4 @@ export class SignMsgRequest {
   @ApiProperty()
   @IsNotEmpty()
   contractAddress: string;
-
-  @ApiProperty()
-  @IsNotEmpty()
-  msg: JSON;
 }

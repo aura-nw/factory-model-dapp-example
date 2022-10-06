@@ -23,5 +23,5 @@ export interface INFTService {
    * sign msg
    * @param request
    */
-  signByMnemonic(request: MODULE_REQUEST.SignMsgRequest);
+  signByMnemonic();
 }
