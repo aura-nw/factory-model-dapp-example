@@ -79,6 +79,21 @@ export class NftController {
     return this.nftService.transfer(request);
   }
 
+  @Post(URL_CONSTANTS.INSTANTIATE_CONTRACT_BY_MNEMONIC)
+  @ApiOperation({
+    summary: 'Instantiate cw721 contract sign by mnemonic',
+  })
+  @ApiBadRequestResponse({ description: 'Error: Bad Request', schema: {} })
+  // @UseGuards(AuthGuard('jwt'), GroupsGuard)
+  @ApiBearerAuth()
+  // @UseInterceptors(AuthUserInterceptor)
+  // @Roles(ROLE_ENUM.USER)
+  @HttpCode(HttpStatus.OK)
+  async instantiateContractByMnemonic(@Body() request: MODULE_REQUEST.InstantiateContractByMnemonicRequest) {
+    this._logger.log('========== Instantiate Contract ==========');
+    return this.nftService.instantiateContractByMnemonic(request);
+  }
+
   @Post(URL_CONSTANTS.MINT_BFT_BY_MNEMONIC)
   @ApiOperation({
     summary: 'Mint NFT by mnemonic',

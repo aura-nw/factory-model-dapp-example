@@ -5,7 +5,8 @@ import {
   MintNftRequest,
   TransferNftRequest,
   InstantiateContractRequest,
-  MintNftByMnemonicRequest
+  MintNftByMnemonicRequest,
+  InstantiateContractByMnemonicRequest
 } from './dtos/request/nft';
 import { ResponseDto } from './dtos/responses';
 
@@ -15,6 +16,7 @@ export const ENTITIES_CONFIG = {
 
 export const REQUEST_CONFIG = {
   INS_CONTRACT_REQUEST: InstantiateContractRequest,
+  INS_CONTRACT_BY_MNEMONIC_REQUEST: InstantiateContractByMnemonicRequest,
   MINT_NFT_REQUEST: MintNftRequest,
   MINT_NFT_REQUEST_BY_MNEMONIC: MintNftByMnemonicRequest,
   TRANSFER_NFT_REQUEST: TransferNftRequest,
@@ -35,6 +37,7 @@ export const RESPONSE_CONFIG = {
 
 export namespace MODULE_REQUEST {
   export abstract class InstantiateContractRequest extends REQUEST_CONFIG.INS_CONTRACT_REQUEST { }
+  export abstract class InstantiateContractByMnemonicRequest extends REQUEST_CONFIG.INS_CONTRACT_BY_MNEMONIC_REQUEST { }
   export abstract class MintNftRequest extends REQUEST_CONFIG.MINT_NFT_REQUEST { }
   export abstract class TransferNftRequest extends REQUEST_CONFIG.TRANSFER_NFT_REQUEST { }
   export abstract class ConnectKMSParam extends REQUEST_CONFIG.CONNECT_KMS_PARAM { }

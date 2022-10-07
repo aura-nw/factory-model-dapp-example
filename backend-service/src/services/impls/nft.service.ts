@@ -1,6 +1,6 @@
 import { DirectSecp256k1HdWallet, EncodeObject } from '@cosmjs/proto-signing';
 import { Injectable, Logger } from '@nestjs/common';
-import { calculateFee, GasPrice, logs } from '@cosmjs/stargate';
+import { calculateFee, GasPrice, logs, StdFee } from '@cosmjs/stargate';
 import { INFTService } from '../inft.service';
 import { ConfigService } from '../../shared/services/config.service';
 import { AppConstants } from '../../common/constants/app.constant';
@@ -23,10 +23,12 @@ export class NFTService implements INFTService {
   private _coinDenom = this._configService.get('COIN_DENOM');
   private rpcEndpoint = this._configService.get('NETWORK_TENDERMINT_URL');
   private mnemonic = this._configService.get('MNEMONIC');
+  private prefix = this._configService.get('ADDRESS_PREFIX');
   maxTokensPerBatchMint = this._configService.get('MAX_TOKENS_PER_BATCH_MINT')
     ? Number(this._configService.get('MAX_TOKENS_PER_BATCH_MINT'))
     : AppConstants.MAX_TOKENS_PER_BATCH_MINT;
   network: Network;
+  client: SigningCosmWasmClient;
   factoryAddress = this._configService.get('FACTORY_CONTRACT_ADDRESS');
   defaultGasPrice = this._configService.get('DEFAULT_GAS_PRICE')
     ? GasPrice.fromString(this._configService.get('DEFAULT_GAS_PRICE'))
@@ -38,7 +40,58 @@ export class NFTService implements INFTService {
   }
 
   /**
-   * Instantiate Contract by CodeID
+   * instantiate Contract sign by mnemonic
+   * @param request
+   * @returns
+   */
+  async instantiateContractByMnemonic(
+    request: MODULE_REQUEST.InstantiateContractByMnemonicRequest,
+  ): Promise<ResponseDto> {
+    try {
+      const { tokenUri, numToken, name, symbol } = request;
+
+      const createMinterMsg = {
+        create_minter: {
+          minter_instantiate_msg: {
+            base_token_uri: tokenUri,
+            name,
+            symbol,
+            num_tokens: numToken,
+            max_tokens_per_batch_mint: this.maxTokensPerBatchMint,
+            max_tokens_per_batch_transfer: this.maxTokensPerBatchMint,
+          },
+        },
+      };
+      const { account, executeFee } = await this.prepareExecuteSignByMnemonic(this.factoryAddress, this.mnemonic, createMinterMsg);
+
+      const result = await this.client.execute(
+        account.address,
+        this.factoryAddress,
+        createMinterMsg,
+        executeFee,
+        this.mnemonic,
+      );
+
+      const contractAddress = logs.findAttribute(
+        result.logs,
+        'instantiate',
+        '_contract_address',
+      );
+      this._logger.log(
+        `Instantiate contract completed: ${result.transactionHash}, contract: ${contractAddress.value}`,
+      );
+
+      return ResponseDto.response(ErrorMap.SUCCESSFUL, {
+        minter: `${contractAddress.value}`,
+      });
+    } catch (error) {
+      this._logger.error(error);
+      return ResponseDto.responseError(NFTService.name, error);
+    }
+  }
+
+  /**
+   * Mint NFT
    * @param request
    * @returns
    */
@@ -50,51 +103,15 @@ export class NFTService implements INFTService {
         `Mint Info: Contract: ${contractAddress}, ID: ${nftIds}`,
       );
 
-      // Wallet
-      const prefix = 'aura';
-      const wallet = await DirectSecp256k1HdWallet.fromMnemonic(this.mnemonic, {
-        prefix: prefix,
-      });
-      const [account] = await wallet.getAccounts();
-      const address = account.address;
-
-      // Network config
-      const gasPrice = GasPrice.fromString('0.02ueaura');
-
       const mintBatchMsg = {
         batch_mint: { token_ids: nftIds },
       };
 
-      // Setup client
-      const client = await SigningCosmWasmClient.connectWithSigner(
-        this.rpcEndpoint,
-        wallet,
-        { gasPrice: gasPrice },
-      );
-
-      const stringifyMsg = JSON.stringify(mintBatchMsg);
-
-      //Estimage fee and gas
-      const options: InstantiateOptions = {};
-
-      const executeContractMsg: EncodeObject = {
-        typeUrl: '/cosmwasm.wasm.v1.MsgExecuteContract',
-        value: MsgExecuteContract.fromPartial({
-          sender: address,
-          contract: request.contractAddress,
-          msg: toUtf8(stringifyMsg),
-          funds: [...(options.funds || [])],
-        }),
-      };
-
-      //Read Cosmos docs, default fee would be multiple with 1.3
-      const estimateGas = await client.simulate(address, [executeContractMsg], this.mnemonic);
-      const executeFee = calculateFee(Math.round(estimateGas * 1.3), gasPrice);
-
-      const result = await client.execute(
-        address,
+      const { account, executeFee } = await this.prepareExecuteSignByMnemonic(request.contractAddress, this.mnemonic, mintBatchMsg);
+      const result = await this.client.execute(
+        account.address,
         request.contractAddress,
-        JSON.parse(stringifyMsg),
+        mintBatchMsg,
         executeFee,
         this.mnemonic,
       );
@@ -106,6 +123,11 @@ export class NFTService implements INFTService {
     }
   }
 
+  /**
+   * instantiate Contract
+   * @param request
+   * @returns
+   */
   async instantiateContract(
     request: MODULE_REQUEST.InstantiateContractRequest,
   ): Promise<ResponseDto> {
@@ -276,5 +298,49 @@ export class NFTService implements INFTService {
       throw new CustomError(ErrorMap.INSUFFICIENT_FUNDS);
 
     return account;
+  }
+
+  async prepareExecuteSignByMnemonic(contract: string, mnemonic: string, message: Object): Promise<{ account: Account, executeFee: StdFee }> {
+    // Wallet
+    const wallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
+      prefix: this.prefix,
+    });
+    const [account] = await wallet.getAccounts();
+    const address = account.address;
+    // Network config
+    const gasPrice = GasPrice.fromString('0.02ueaura');
+    //get Client
+    this.client = await SigningCosmWasmClient.connectWithSigner(
+      this.rpcEndpoint,
+      wallet,
+      { gasPrice: gasPrice },
+    );
+    // TODO get creator balance
+
+    //Estimage fee and gas
+    const options: InstantiateOptions = {};
+
+    const executeContractMsg: EncodeObject = {
+      typeUrl: '/cosmwasm.wasm.v1.MsgExecuteContract',
+      value: MsgExecuteContract.fromPartial({
+        sender: address,
+        contract,
+        msg: toUtf8(JSON.stringify(message)),
+        funds: [...(options.funds || [])],
+      }),
+    };
+
+    // Setup client
+    this.client = await SigningCosmWasmClient.connectWithSigner(
+      this.rpcEndpoint,
+      wallet,
+      { gasPrice: gasPrice },
+    );
+
+    //Read Cosmos docs, default fee would be multiple with 1.3
+    const estimateGas = await this.client.simulate(address, [executeContractMsg], this.mnemonic);
+    const executeFee = calculateFee(Math.round(estimateGas * 1.3), gasPrice);
+
+    return { account, executeFee };
   }
 }
