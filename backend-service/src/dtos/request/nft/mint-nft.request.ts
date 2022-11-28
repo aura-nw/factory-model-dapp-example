@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class MintNftRequest {
-  @ApiProperty()
+  @ApiProperty({type:'integer',isArray:true})
   nftIds: number[];
 
   @ApiProperty()
