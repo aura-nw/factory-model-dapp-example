@@ -6,6 +6,12 @@ export interface INFTService {
    * @param request
    */
   instantiateContract(request: MODULE_REQUEST.InstantiateContractRequest);
+  
+  /**
+   * instantiate contract sign by mnemonic
+   * @param request
+   */
+   instantiateContractByMnemonic(request: MODULE_REQUEST.InstantiateContractByMnemonicRequest);
 
   /**
    * mint nft

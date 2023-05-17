@@ -11,6 +11,7 @@ export const CONTROLLER_CONSTANTS = {
 };
 export const URL_CONSTANTS = {
   INSTANTIATE_CONTRACT: 'instantiate_contract',
+  INSTANTIATE_CONTRACT_BY_MNEMONIC: 'instantiate_contract_sign_by_mnemonic',
   MINT_NFT: 'mint_nft',
   TRANSFER_NFT: 'transfer_nft',
   CONNECT_KMS: ':id/connect',
